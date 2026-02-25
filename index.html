@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabExplain (Standalone)</title>
+  <style>
+/* public/styles.css */
+:root {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.4;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+}
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e6e8ee;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+}
+
+.muted {
+  color: #555;
+}
+
+.small {
+  font-size: 13px;
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 10px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid #eef1f7;
+  vertical-align: top;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #d6dae6;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cfd5e3;
+  background: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #f1f3f8;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.badge-HIGH { border-color: #d3a100; }
+.badge-LOW { border-color: #2b7bb9; }
+.badge-NORMAL { border-color: #2a9d5b; }
+.badge-UNKNOWN { border-color: #888; }
+
+.disclaimer {
+  font-size: 13px;
+  color: #444;
+  background: #fff8d6;
+  border: 1px solid #f0e0a0;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.result-card {
+  border: 1px solid #eef1f7;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.result-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #eef1f7;
+  margin: 12px 0;
+}
+
+.remove-btn {
+  white-space: nowrap;
+}
+
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>LabExplain</h1>
+    <p class="muted small">Plain-language explanations of lab results for non-medical readers.</p>
+    <p class="disclaimer">
+      Educational information only — not medical advice, diagnosis, or treatment.
+      Always discuss results with a qualified clinician.
+    </p>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Enter results</h2>
+      <p class="muted small">Tip: copy the <strong>reference range</strong> from your lab report (ranges vary by lab).</p>
+
+      <div class="actions">
+        <button id="addRow" type="button">Add row</button>
+        <button id="loadExample" type="button">Load example panel</button>
+        <button id="interpret" type="button">Interpret</button>
+        <button id="clear" type="button">Clear</button>
+      </div>
+
+      <div style="overflow:auto; margin-top:12px;">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th style="min-width:180px;">Test</th>
+              <th style="min-width:110px;">Value</th>
+              <th style="min-width:110px;">Unit</th>
+              <th style="min-width:130px;">Ref low</th>
+              <th style="min-width:130px;">Ref high</th>
+              <th style="width:1%;">&nbsp;</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Explanation</h2>
+      <div id="out" class="muted">Nothing yet.</div>
+    </section>
+  </main>
+
+  <footer class="wrap muted small">
+    If you feel very unwell, or a clinician told you this result is urgent, seek medical care promptly.
+  </footer>
+
+  <script>
+  // Embedded KB
+  window.LAB_KB = {"version": "1.1.0", "tests": {"glucose": {"loinc": "2345-7", "name": "Glucose", "what_it_is": "Glucose is a type of sugar in the blood. It is used by the body for energy. Blood glucose can change based on recent food, stress, illness, and some medicines.", "what_high_can_mean": ["Recent food intake (non-fasting sample) or sugary drinks", "Stress, acute illness, or some medications (for example, steroids) can raise glucose", "Blood sugar regulation problems (this requires clinician evaluation and repeat testing)"], "what_low_can_mean": ["Not eating enough / long gap between meals", "More physical activity than usual", "Some medicines can lower blood sugar (discuss with a clinician)"], "common_next_steps": ["Confirm whether the sample was fasting and review the lab’s reference range and units", "Repeat testing if advised (for example fasting glucose or HbA1c) depending on clinical context", "Discuss symptoms (thirst, urination, dizziness) and medications with a clinician"], "questions_to_ask": ["Was this test fasting or non-fasting?", "Should I repeat the test or do an HbA1c?", "Could any medicine, illness, or timing explain this value?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges vary by lab and method."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "glucose.v1"}], "aliases": ["blood glucose", "random glucose", "fasting glucose"]}, "creatinine": {"loinc": "2160-0", "name": "Creatinine", "what_it_is": "Creatinine is a waste product from muscle activity that is removed from the blood by the kidneys. Levels can vary with hydration, muscle mass, and kidney function.", "what_high_can_mean": ["Dehydration (less water in the body can concentrate blood tests)", "Higher muscle mass or recent heavy exercise can increase creatinine", "Reduced kidney filtration (needs clinician assessment, often alongside eGFR and other tests)"], "what_low_can_mean": ["Lower muscle mass (can be normal in some people)", "Pregnancy can be associated with lower creatinine"], "common_next_steps": ["Review eGFR (if provided) and compare with previous results if available", "Check hydration status and any recent intense exercise", "Discuss medicines and medical history with a clinician"], "questions_to_ask": ["Is an eGFR reported and how is it calculated for me?", "Could dehydration or exercise affect this result?", "Do I need repeat tests or additional kidney tests?"], "limits": ["Creatinine alone does not fully describe kidney health.", "Interpretation depends on age, sex, muscle mass, and hydration."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "creatinine.v1"}], "aliases": ["serum creatinine"]}, "hemoglobin": {"loinc": "718-7", "name": "Hemoglobin", "what_it_is": "Hemoglobin is the protein in red blood cells that carries oxygen. It is part of a complete blood count (CBC).", "what_high_can_mean": ["Dehydration can make hemoglobin appear higher (less plasma volume)", "Living at higher altitude can increase hemoglobin", "Some lung/heart conditions and smoking can be associated with higher hemoglobin (needs clinician evaluation)"], "what_low_can_mean": ["Iron deficiency is a common reason (requires clinician assessment and iron studies)", "Blood loss (including heavy menstrual bleeding) can lower hemoglobin", "Chronic illness or vitamin deficiencies can contribute"], "common_next_steps": ["Check related CBC values (MCV, hematocrit, RBC) if available", "If low, clinicians often consider iron studies and possible sources of blood loss", "Compare with prior hemoglobin results over time"], "questions_to_ask": ["Do other CBC values suggest iron deficiency (like MCV) and should I do iron studies?", "Could bleeding or diet be affecting this value?", "Should I repeat the CBC?"], "limits": ["Hemoglobin changes must be interpreted with symptoms and other CBC values.", "Reference ranges vary by lab and population."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "hemoglobin.v1"}], "aliases": ["hgb", "hb"]}, "wbc": {"loinc": "6690-2", "name": "Leukocytes (WBC)", "what_it_is": "White blood cells (WBC) are immune cells that can rise or fall with infections, inflammation, stress, and some medications.", "what_high_can_mean": ["Infection or inflammation (common, but not diagnostic without symptoms and other tests)", "Physical or emotional stress can increase WBC temporarily", "Some medications (and smoking) can affect WBC"], "what_low_can_mean": ["Some viral illnesses can lower WBC temporarily", "Certain medications can lower WBC", "Nutritional deficiencies or bone marrow problems are less common causes (clinician evaluation needed)"], "common_next_steps": ["Review the differential count (neutrophils, lymphocytes) if available", "Consider symptoms (fever, sore throat) and recent infections", "Repeat testing if advised by a clinician"], "questions_to_ask": ["Is the WBC differential available and what pattern does it show?", "Could medicines or a recent illness explain this?", "Do you recommend repeating the CBC?"], "limits": ["WBC values must be interpreted with symptoms and the differential count.", "This tool cannot determine a cause from WBC alone."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "wbc.v1"}], "aliases": ["white blood cell count", "leukocytes"]}, "alt": {"loinc": "1742-6", "name": "Alanine aminotransferase (ALT)", "what_it_is": "ALT is an enzyme found mostly in liver cells. It can rise when liver cells are irritated or injured, but mild elevations can have many non-specific causes.", "what_high_can_mean": ["Fatty liver changes and metabolic factors can be associated with higher ALT", "Alcohol use can raise liver enzymes", "Some medicines and supplements can affect ALT", "Viral hepatitis and other liver conditions are possible causes (needs clinician evaluation)"], "what_low_can_mean": ["Low ALT is usually not clinically significant on its own"], "common_next_steps": ["Review other liver tests (AST, bilirubin, ALP) if available", "Discuss alcohol intake, medicines, and risk factors with a clinician", "Repeat testing if advised and consider further evaluation if persistently elevated"], "questions_to_ask": ["Are other liver tests abnormal too (AST, bilirubin, ALP)?", "Could any medicine, supplement, or alcohol be affecting ALT?", "Should I repeat the test and when?"], "limits": ["ALT alone cannot diagnose liver disease.", "Interpretation depends on other tests, symptoms, and risk factors."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "alt.v1"}], "aliases": ["alanine aminotransferase", "sgpt"]}, "rbc": {"loinc": "789-8", "name": "Red Blood Cell Count (RBC)", "aliases": ["rbc count", "red blood cells"], "what_it_is": "RBC is the number of red blood cells in your blood. Red blood cells carry oxygen around the body.", "what_high_can_mean": ["Dehydration (less fluid in the blood can make counts look higher)", "Living at high altitude or chronic low oxygen states", "Less commonly, bone marrow conditions (needs clinician evaluation)"], "what_low_can_mean": ["Anemia (many possible causes such as iron deficiency, bleeding, or chronic illness)", "Low bone marrow production (can happen with some illnesses or medications)", "Recent blood loss"], "common_next_steps": ["Look at related tests like hemoglobin, hematocrit, MCV, and RDW for patterns.", "Discuss symptoms like tiredness, shortness of breath, or dizziness with a clinician.", "Repeat testing if advised."], "questions_to_ask": ["Do my other red blood cell tests suggest anemia?", "Could diet, bleeding, or medications explain this result?", "Do I need iron studies or other follow-up tests?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "rbc.v1"}]}, "hematocrit": {"loinc": "4544-3", "name": "Hematocrit (HCT)", "aliases": ["hct", "haematocrit"], "what_it_is": "Hematocrit is the percentage of your blood made up of red blood cells. It helps describe oxygen-carrying capacity and hydration status.", "what_high_can_mean": ["Dehydration", "High altitude or long-term low oxygen exposure", "Less commonly, conditions that increase red blood cells (needs clinician evaluation)"], "what_low_can_mean": ["Anemia (many causes)", "Recent blood loss", "Overhydration (lots of fluid can dilute blood)"], "common_next_steps": ["Review hemoglobin and RBC together to understand the full picture.", "Discuss any symptoms and possible causes with a clinician."], "questions_to_ask": ["Does this fit with anemia based on hemoglobin and RBC?", "Could hydration or recent bleeding affect this?", "Should we repeat the test?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "hct.v1"}]}, "platelets": {"loinc": "777-3", "name": "Platelets (PLT)", "aliases": ["plt", "platelet count", "thrombocytes"], "what_it_is": "Platelets are small blood cells that help with clotting when you get a cut or injury.", "what_high_can_mean": ["Inflammation or infection", "Iron deficiency can sometimes raise platelets", "Recovery phase after bleeding or surgery"], "what_low_can_mean": ["Viral illnesses or some medications", "Immune-related platelet lowering (needs clinician evaluation)", "Bone marrow problems (needs clinician evaluation)"], "common_next_steps": ["Check if you have bleeding/bruising symptoms and discuss with a clinician.", "Review other CBC results and any medicines or recent illness.", "Repeat testing if advised."], "questions_to_ask": ["Could any medicines or recent illness affect my platelets?", "Do I need a repeat CBC or further testing?", "What symptoms should prompt urgent care?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "platelets.v1"}]}, "mcv": {"loinc": "787-2", "name": "Mean Corpuscular Volume (MCV)", "aliases": ["mean cell volume"], "what_it_is": "MCV describes the average size of your red blood cells. It helps classify types of anemia.", "what_high_can_mean": ["Vitamin B12 or folate deficiency", "Alcohol use or liver disease can raise MCV", "Some medications can increase MCV"], "what_low_can_mean": ["Iron deficiency (common)", "Thalassemia traits (inherited blood conditions)", "Chronic inflammation can sometimes lower MCV"], "common_next_steps": ["Interpret together with hemoglobin, RDW, and iron/B12/folate tests if needed.", "Discuss diet, medicines, and symptoms with a clinician."], "questions_to_ask": ["Do I need iron studies, B12, or folate testing?", "Do other CBC markers suggest a specific pattern?", "Could medications or alcohol affect this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "mcv.v1"}]}, "rdw": {"loinc": "788-0", "name": "Red Cell Distribution Width (RDW)", "aliases": ["red cell distribution width"], "what_it_is": "RDW describes how much your red blood cells vary in size. It’s often used along with MCV to understand anemia patterns.", "what_high_can_mean": ["Iron deficiency (often raises RDW)", "Vitamin B12/folate deficiency", "Recovery after blood loss or treatment of anemia"], "what_low_can_mean": ["Low RDW is usually not a concern by itself"], "common_next_steps": ["Look at RDW together with hemoglobin and MCV.", "Discuss whether iron/B12/folate tests are appropriate."], "questions_to_ask": ["Does this pattern suggest iron deficiency or another type of anemia?", "Do I need iron, B12, or folate testing?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "rdw.v1"}]}, "neutrophils": {"loinc": null, "name": "Neutrophils", "aliases": ["neutrophils percent", "neutrophils %", "absolute neutrophils", "anc"], "what_it_is": "Neutrophils are a type of white blood cell that helps fight bacteria and responds to inflammation.", "what_high_can_mean": ["Bacterial infection or inflammation", "Stress, smoking, or steroid medicines can increase neutrophils", "Physical stress (exercise, injury, surgery)"], "what_low_can_mean": ["Some viral infections", "Some medicines can lower neutrophils", "Less commonly, bone marrow problems (needs clinician evaluation)"], "common_next_steps": ["Interpret along with total WBC and other differential counts.", "Discuss recent illness, fever, or medications with a clinician."], "questions_to_ask": ["Is this percentage or an absolute count (ANC)?", "Could recent infection, stress, or medications explain this?", "Do I need repeat testing?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "neutrophils.v1"}]}, "lymphocytes": {"loinc": null, "name": "Lymphocytes", "aliases": ["lymphocytes percent", "lymphocytes %", "absolute lymphocytes"], "what_it_is": "Lymphocytes are white blood cells that are important for immune responses, especially against viruses.", "what_high_can_mean": ["Viral infections can raise lymphocytes", "Some long-term infections or immune conditions (needs clinician evaluation)"], "what_low_can_mean": ["Stress or steroid medicines", "Some infections or immune system suppression", "Poor nutrition or other chronic illness (varies)"], "common_next_steps": ["Interpret with total WBC and symptoms (fever, sore throat, etc.).", "Discuss medications (especially steroids) with a clinician."], "questions_to_ask": ["Is this a percentage or an absolute count?", "Could a recent infection or medication explain this?", "Do I need follow-up testing?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "lymphocytes.v1"}]}, "monocytes": {"loinc": null, "name": "Monocytes", "aliases": ["monocytes percent", "monocytes %", "absolute monocytes"], "what_it_is": "Monocytes are white blood cells involved in inflammation and cleaning up damaged tissue.", "what_high_can_mean": ["Recovery from infection or inflammation", "Some chronic infections or inflammatory conditions (needs clinician evaluation if persistent)"], "what_low_can_mean": ["Low monocytes are often not meaningful by themselves"], "common_next_steps": ["Look at the whole CBC differential and trends over time.", "Discuss persistent abnormalities with a clinician."], "questions_to_ask": ["Is this temporary (for example after an illness) or persistent?", "Do other CBC results look normal?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "monocytes.v1"}]}, "eosinophils": {"loinc": null, "name": "Eosinophils", "aliases": ["eosinophils percent", "eosinophils %", "absolute eosinophils"], "what_it_is": "Eosinophils are white blood cells that can increase with allergies, asthma, and some infections.", "what_high_can_mean": ["Allergies or asthma flare-ups", "Some parasitic infections (depends on region and exposure)", "Certain medicines can raise eosinophils"], "what_low_can_mean": ["Low eosinophils are usually not a concern by themselves"], "common_next_steps": ["Discuss allergy/asthma history, rashes, and medication changes with a clinician.", "Consider repeat testing if advised."], "questions_to_ask": ["Could allergies, asthma, or a medication explain this?", "Do I need any follow-up tests based on my symptoms?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "eosinophils.v1"}]}, "basophils": {"loinc": null, "name": "Basophils", "aliases": ["basophils percent", "basophils %", "absolute basophils"], "what_it_is": "Basophils are a rare type of white blood cell involved in allergic and inflammatory reactions.", "what_high_can_mean": ["Allergies or inflammation", "Less commonly, blood disorders (needs clinician evaluation if markedly high/persistent)"], "what_low_can_mean": ["Low basophils are common and usually not meaningful by themselves"], "common_next_steps": ["Interpret with the full CBC differential and symptoms.", "Discuss persistent abnormalities with a clinician."], "questions_to_ask": ["Is this a mild change or a large/persistent change?", "Do other blood counts look normal?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "basophils.v1"}]}, "bun": {"loinc": "3094-0", "name": "Blood Urea Nitrogen (BUN) / Urea", "aliases": ["bun", "urea", "urea nitrogen"], "what_it_is": "BUN (or urea) is a waste product measured in blood. It can reflect kidney function and hydration status.", "what_high_can_mean": ["Dehydration", "High protein intake or gastrointestinal bleeding", "Kidney function problems (needs clinician evaluation and context)"], "what_low_can_mean": ["Low protein intake or poor nutrition", "Overhydration", "Some liver conditions can lower urea production (needs clinician evaluation)"], "common_next_steps": ["Interpret together with creatinine and eGFR.", "Discuss hydration, diet, and medicines with a clinician."], "questions_to_ask": ["What does my BUN-to-creatinine pattern suggest?", "Could dehydration or diet be affecting this result?", "Do I need repeat testing?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "bun.v1"}]}, "egfr": {"loinc": "98979-8", "name": "Estimated Glomerular Filtration Rate (eGFR)", "aliases": ["egfr", "estimated gfr"], "what_it_is": "eGFR is an estimate of how well the kidneys filter waste. It is calculated using creatinine (and sometimes age/sex).", "what_high_can_mean": ["A higher eGFR is usually not a problem; it can vary with muscle mass and calculation method"], "what_low_can_mean": ["Lower eGFR can suggest reduced kidney filtering, but it must be interpreted with repeat tests and medical context", "Temporary factors (dehydration, illness, some medicines) can affect the estimate"], "common_next_steps": ["Confirm whether the lab used the most recent eGFR formula and which inputs were used.", "Discuss trends over time (multiple results) with a clinician.", "Ask whether a urine test for protein/albumin is needed."], "questions_to_ask": ["Is this a new change or long-standing?", "Could illness, dehydration, or medicines affect this estimate?", "Do I need urine albumin/protein testing?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "egfr.v1"}]}, "sodium": {"loinc": "2951-2", "name": "Sodium (Na)", "aliases": ["na", "serum sodium"], "what_it_is": "Sodium is an electrolyte that helps control fluid balance and nerve/muscle function.", "what_high_can_mean": ["Dehydration (not enough water)", "High salt intake plus not enough fluids (sometimes)", "Certain hormone or kidney-related problems (needs clinician evaluation)"], "what_low_can_mean": ["Too much water relative to salt (many possible causes)", "Some medicines (for example some diuretics)", "Hormone, heart, liver, or kidney problems (needs clinician evaluation)"], "common_next_steps": ["Discuss symptoms (confusion, weakness, severe headache) urgently if present.", "Review fluid intake and medicines with a clinician.", "Repeat testing if advised."], "questions_to_ask": ["Could any medicines or recent illness affect my sodium?", "Is this mild or severe?", "Should I repeat the test soon?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "sodium.v1"}]}, "potassium": {"loinc": "2823-3", "name": "Potassium (K)", "aliases": ["k", "serum potassium"], "what_it_is": "Potassium is an electrolyte important for heart rhythm and muscle function.", "what_high_can_mean": ["Kidney function changes", "Some medicines can raise potassium (for example some blood pressure medicines)", "Sample handling issues can falsely raise potassium (hemolysis)"], "what_low_can_mean": ["Vomiting/diarrhea or dehydration", "Some diuretics can lower potassium", "Low intake or shifts during illness"], "common_next_steps": ["If potassium is very abnormal, clinicians may act quickly because it can affect heart rhythm.", "Discuss medicines and kidney results with a clinician.", "Ask if the sample might have been hemolyzed if potassium is unexpectedly high."], "questions_to_ask": ["Is this result mild or severe?", "Could medicines or kidney function be affecting potassium?", "Should the test be repeated to confirm?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "potassium.v1"}]}, "chloride": {"loinc": "2075-0", "name": "Chloride (Cl)", "aliases": ["cl", "serum chloride"], "what_it_is": "Chloride is an electrolyte that helps maintain fluid balance and acid–base balance.", "what_high_can_mean": ["Dehydration", "Certain acid–base imbalances", "Kidney-related changes (needs clinician context)"], "what_low_can_mean": ["Vomiting or stomach acid loss", "Certain acid–base imbalances", "Some diuretics"], "common_next_steps": ["Interpret with sodium, potassium, and bicarbonate/CO2.", "Discuss ongoing vomiting/diarrhea or medicines with a clinician."], "questions_to_ask": ["Do my other electrolytes suggest an acid–base issue?", "Could vomiting/diuretics explain this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "chloride.v1"}]}, "bicarbonate": {"loinc": "2028-9", "name": "Bicarbonate / CO2 (Total CO2)", "aliases": ["co2", "bicarb", "hco3", "bicarbonate"], "what_it_is": "Bicarbonate (often reported as CO2) helps keep the body’s acid–base balance stable.", "what_high_can_mean": ["Compensation for breathing-related acid–base changes", "Long-term vomiting or diuretic use (sometimes)"], "what_low_can_mean": ["Diarrhea (loss of bicarbonate)", "Kidney-related acid–base problems", "Diabetic ketoacidosis and other acid build-up states (needs urgent clinician evaluation if severe)"], "common_next_steps": ["Interpret with symptoms and other labs (anion gap, glucose, kidney tests) if available.", "Discuss persistent abnormalities with a clinician."], "questions_to_ask": ["Does this suggest an acid–base problem?", "Do I need repeat tests or additional labs?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "bicarbonate.v1"}]}, "calcium": {"loinc": "17861-6", "name": "Calcium (Ca)", "aliases": ["ca", "serum calcium"], "what_it_is": "Calcium is important for bones, nerves, and muscle function. Blood calcium is tightly controlled.", "what_high_can_mean": ["Dehydration can slightly raise measured calcium", "Parathyroid hormone problems or certain cancers (needs clinician evaluation)", "Too much calcium/vitamin D supplementation (sometimes)"], "what_low_can_mean": ["Low albumin can lower total calcium (a corrected value may be needed)", "Vitamin D deficiency", "Parathyroid hormone problems (needs clinician evaluation)"], "common_next_steps": ["Ask if the lab reports corrected calcium or ionized calcium when albumin is abnormal.", "Discuss supplements and symptoms (tingling, cramps) with a clinician."], "questions_to_ask": ["Is this total calcium or ionized calcium?", "Do we need to consider albumin or vitamin D levels?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "calcium.v1"}]}, "ast": {"loinc": "1920-8", "name": "AST (Aspartate Aminotransferase)", "aliases": ["aspartate aminotransferase", "sgot"], "what_it_is": "AST is an enzyme found in liver and muscle cells. Higher AST can happen when these cells are irritated or damaged.", "what_high_can_mean": ["Liver irritation (many causes, including alcohol, viral infections, fatty liver)", "Muscle injury or heavy exercise can raise AST", "Certain medicines can increase AST"], "what_low_can_mean": ["Low AST is usually not a problem"], "common_next_steps": ["Interpret with ALT, ALP, bilirubin, and symptoms.", "Discuss alcohol use, medicines, and recent exercise with a clinician."], "questions_to_ask": ["Are ALT and other liver tests also abnormal?", "Could exercise, alcohol, or medicines explain this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "ast.v1"}]}, "alp": {"loinc": "6768-6", "name": "Alkaline Phosphatase (ALP)", "aliases": ["alk phos", "alkaline phosphatase"], "what_it_is": "ALP is an enzyme found in liver/bile ducts and bone. Higher ALP can come from either source.", "what_high_can_mean": ["Bile duct irritation or blockage (needs clinician evaluation)", "Bone growth (common in children/teens) or bone conditions", "Pregnancy can increase ALP"], "what_low_can_mean": ["Low ALP is less common and often not meaningful, but can relate to nutrition or certain conditions (clinician context)"], "common_next_steps": ["Interpret with GGT and other liver tests to help decide if the source is liver vs bone.", "Discuss age, pregnancy status, and symptoms with a clinician."], "questions_to_ask": ["Does GGT suggest this is coming from the liver?", "Could growth (in teens) or bone issues explain this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "alp.v1"}]}, "bilirubin_total": {"loinc": "1975-2", "name": "Total Bilirubin", "aliases": ["bilirubin", "t bili", "total bili"], "what_it_is": "Bilirubin is a yellow pigment formed when red blood cells break down. The liver helps process it.", "what_high_can_mean": ["Liver or bile duct problems (needs clinician evaluation)", "Increased red blood cell breakdown (hemolysis) (needs clinician evaluation)", "A common harmless inherited condition (Gilbert syndrome) can raise bilirubin slightly"], "what_low_can_mean": ["Low bilirubin is usually not a problem"], "common_next_steps": ["Check if the report includes direct (conjugated) vs indirect bilirubin.", "Discuss yellowing of eyes/skin, dark urine, or pale stools with a clinician promptly."], "questions_to_ask": ["Is it mostly direct or indirect bilirubin?", "Do other liver tests (ALT/AST/ALP) suggest a pattern?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "bilirubin_total.v1"}]}, "albumin": {"loinc": "1751-7", "name": "Albumin", "aliases": ["serum albumin"], "what_it_is": "Albumin is a protein made by the liver. It helps keep fluid in the bloodstream and carries hormones and medicines.", "what_high_can_mean": ["Dehydration (most common reason for high albumin)"], "what_low_can_mean": ["Poor nutrition or not absorbing protein well", "Liver production problems", "Loss through kidneys (protein in urine) or gut (needs clinician evaluation)"], "common_next_steps": ["Interpret with total protein, liver tests, and urine protein/albumin if available.", "Discuss swelling, weight changes, and diet with a clinician."], "questions_to_ask": ["Could kidney protein loss or liver issues explain low albumin?", "Do I need a urine test for protein/albumin?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "albumin.v1"}]}, "total_protein": {"loinc": "2885-2", "name": "Total Protein", "aliases": ["serum total protein"], "what_it_is": "Total protein measures the main proteins in blood (including albumin and globulins).", "what_high_can_mean": ["Dehydration", "Chronic inflammation or infection can raise some proteins (needs clinician evaluation if persistent)", "Less commonly, certain blood protein conditions (needs clinician evaluation)"], "what_low_can_mean": ["Poor nutrition or malabsorption", "Liver production problems", "Kidney or gut protein loss"], "common_next_steps": ["Interpret with albumin and globulin (if provided).", "Discuss persistent changes with a clinician."], "questions_to_ask": ["Is the change mainly in albumin or globulins?", "Do I need follow-up tests if this stays abnormal?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "total_protein.v1"}]}, "ggt": {"loinc": "2324-2", "name": "GGT (Gamma-Glutamyl Transferase)", "aliases": ["gamma gt", "ggt"], "what_it_is": "GGT is an enzyme that can help interpret liver and bile duct-related problems, especially when ALP is high.", "what_high_can_mean": ["Bile duct irritation or blockage (needs clinician evaluation)", "Alcohol use can increase GGT", "Some medicines can raise GGT"], "what_low_can_mean": ["Low GGT is usually not a problem"], "common_next_steps": ["If ALP is high, GGT can help suggest whether the source is liver/bile ducts.", "Discuss alcohol use and medicines with a clinician."], "questions_to_ask": ["Does this help explain an elevated ALP?", "Could medicines or alcohol affect this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "ggt.v1"}]}, "hba1c": {"loinc": "4548-4", "name": "Hemoglobin A1c (HbA1c)", "aliases": ["a1c", "hba1c", "glycated hemoglobin"], "what_it_is": "HbA1c estimates your average blood sugar over roughly the past 2–3 months. It’s less affected by what you ate today.", "what_high_can_mean": ["Higher average blood sugar over recent months (needs clinician evaluation and often repeat testing)", "Some conditions can affect A1c accuracy (for example certain anemias or hemoglobin variants)"], "what_low_can_mean": ["Low A1c is usually not a concern, but can happen with frequent low blood sugar or conditions affecting red blood cells"], "common_next_steps": ["Confirm the unit (often %) and discuss what it means for you with a clinician.", "Ask if any blood conditions could affect accuracy."], "questions_to_ask": ["Is this result consistent with my glucose readings?", "Could anemia or a blood disorder affect A1c accuracy?", "Should I repeat the test?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "hba1c.v1"}]}, "total_cholesterol": {"loinc": "2093-3", "name": "Total Cholesterol", "aliases": ["cholesterol", "total chol"], "what_it_is": "Total cholesterol is a summary measure of cholesterol in the blood. Cholesterol is used to build cells and hormones.", "what_high_can_mean": ["Diet, genetics, and some medical conditions can increase cholesterol", "Some medicines can affect cholesterol levels"], "what_low_can_mean": ["Low cholesterol is less common; it can occur with poor nutrition or certain illnesses (clinician context)"], "common_next_steps": ["Interpret with LDL, HDL, and triglycerides for a clearer picture.", "Discuss heart risk factors with a clinician (blood pressure, smoking, diabetes, family history)."], "questions_to_ask": ["What are my LDL and HDL levels, and what do they mean for my risk?", "Should this test be fasting or non-fasting in my case?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "total_cholesterol.v1"}]}, "ldl": {"loinc": "13457-7", "name": "LDL Cholesterol", "aliases": ["ldl", "bad cholesterol", "ldl-c"], "what_it_is": "LDL cholesterol is often called “bad cholesterol” because higher LDL is linked with higher risk of heart and blood vessel disease over time.", "what_high_can_mean": ["Genetics and diet can raise LDL", "Some medical conditions (like low thyroid function) can raise LDL"], "what_low_can_mean": ["Lower LDL is generally considered beneficial for heart risk"], "common_next_steps": ["Discuss overall heart risk and goals with a clinician.", "If LDL is unexpectedly high, ask about thyroid testing and family history."], "questions_to_ask": ["What LDL goal is recommended for me based on my risk?", "Could thyroid problems or family history play a role?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "ldl.v1"}]}, "hdl": {"loinc": "2085-9", "name": "HDL Cholesterol", "aliases": ["hdl", "good cholesterol", "hdl-c"], "what_it_is": "HDL cholesterol is often called “good cholesterol.” Higher HDL can be protective, but the full risk picture depends on many factors.", "what_high_can_mean": ["Higher HDL is often not a problem; genetics and exercise can increase it"], "what_low_can_mean": ["Low HDL can be linked with higher heart risk, especially with high triglycerides or other risk factors"], "common_next_steps": ["Interpret with LDL and triglycerides, and discuss lifestyle factors with a clinician.", "Review smoking status, weight, and activity (common factors affecting HDL)."], "questions_to_ask": ["How does my HDL fit with my overall lipid profile?", "What changes are realistic and safe for me?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "hdl.v1"}]}, "triglycerides": {"loinc": "2571-8", "name": "Triglycerides", "aliases": ["tg", "trigs", "triglyceride"], "what_it_is": "Triglycerides are a type of fat in the blood. They can rise after eating and with some health conditions.", "what_high_can_mean": ["Recent meal (non-fasting sample) can raise triglycerides", "High sugar/refined carbs, alcohol, and some medicines can raise triglycerides", "Diabetes and some genetic conditions can raise triglycerides"], "what_low_can_mean": ["Low triglycerides are usually not a problem"], "common_next_steps": ["Confirm whether the sample was fasting.", "Discuss diet patterns and alcohol use with a clinician if triglycerides are high."], "questions_to_ask": ["Was this test fasting?", "Could diabetes or medicines be affecting my triglycerides?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "triglycerides.v1"}]}, "crp": {"loinc": "1988-5", "name": "C-Reactive Protein (CRP)", "aliases": ["crp", "c reactive protein"], "what_it_is": "CRP is a marker of inflammation in the body. It can rise with infections, injuries, and many inflammatory conditions.", "what_high_can_mean": ["Infection or inflammation (many possible causes)", "Recent injury or surgery", "Chronic inflammatory diseases (needs clinician evaluation)"], "what_low_can_mean": ["Low CRP is usually normal"], "common_next_steps": ["Interpret with symptoms (fever, pain) and other tests.", "Discuss persistent elevation with a clinician."], "questions_to_ask": ["Is this a short-term rise (acute) or a long-term pattern?", "What other tests or symptoms help explain this?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "crp.v1"}]}, "esr": {"loinc": "4537-7", "name": "Erythrocyte Sedimentation Rate (ESR)", "aliases": ["esr", "sed rate", "sedimentation rate"], "what_it_is": "ESR is a general marker of inflammation. It is less specific and can be affected by age and anemia.", "what_high_can_mean": ["Inflammation or infection", "Autoimmune conditions (needs clinician evaluation)", "Anemia can raise ESR"], "what_low_can_mean": ["Low ESR is usually not a problem"], "common_next_steps": ["Interpret with CRP (if available) and symptoms.", "Discuss persistent elevation with a clinician."], "questions_to_ask": ["Could anemia or age affect this result?", "Do we need other tests to find the cause?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "esr.v1"}]}, "tsh": {"loinc": "3016-3", "name": "TSH (Thyroid Stimulating Hormone)", "aliases": ["tsh", "thyroid stimulating hormone"], "what_it_is": "TSH is a hormone that signals the thyroid gland to make thyroid hormones. It’s often used as a first test for thyroid function.", "what_high_can_mean": ["An underactive thyroid (hypothyroidism) is one common cause (needs clinician confirmation with free T4 and context)", "Recovery from illness can temporarily change TSH"], "what_low_can_mean": ["An overactive thyroid (hyperthyroidism) is one common cause (needs clinician confirmation with free T4/T3 and context)", "Some medicines can lower TSH"], "common_next_steps": ["Interpret with free T4 (and sometimes free T3).", "Discuss symptoms like fatigue, weight changes, heat/cold intolerance, and palpitations with a clinician."], "questions_to_ask": ["Do I need free T4 (and/or free T3) to confirm what this means?", "Could recent illness or medicines affect TSH?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "tsh.v1"}]}, "free_t4": {"loinc": "3024-7", "name": "Free T4", "aliases": ["ft4", "free thyroxine", "free t4"], "what_it_is": "Free T4 is one of the main thyroid hormones. It helps control energy use, temperature, and many body systems.", "what_high_can_mean": ["Overactive thyroid (one possible cause; needs clinician evaluation with TSH and symptoms)", "Too much thyroid hormone replacement (if taking it)"], "what_low_can_mean": ["Underactive thyroid (one possible cause; needs clinician evaluation with TSH and symptoms)", "Pituitary issues (less common; clinician evaluation needed)"], "common_next_steps": ["Interpret together with TSH.", "Discuss symptoms and any thyroid medications with a clinician."], "questions_to_ask": ["How does this fit with my TSH?", "If I take thyroid medicine, do we need to adjust the dose?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "free_t4.v1"}]}, "bun_creatinine_ratio": {"loinc": null, "name": "BUN/Creatinine Ratio", "aliases": ["bun/creatinine ratio", "bun creatinine ratio"], "what_it_is": "The BUN/creatinine ratio compares two kidney-related markers. It can sometimes suggest dehydration or other patterns, but it’s not a diagnosis by itself.", "what_high_can_mean": ["Dehydration is a common cause", "High protein intake or gastrointestinal bleeding (needs clinician evaluation)"], "what_low_can_mean": ["Low ratio is often less specific; it can happen with low protein intake or some illnesses (clinician context)"], "common_next_steps": ["Interpret with BUN, creatinine, hydration status, and symptoms.", "Discuss patterns with a clinician."], "questions_to_ask": ["Does this pattern suggest dehydration?", "Do other kidney tests (eGFR, urine protein) look okay?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "bun_creatinine_ratio.v1"}]}, "urine_protein": {"loinc": null, "name": "Urine Protein (Dipstick/Screen)", "aliases": ["protein urine", "urine protein", "protein (urine)"], "what_it_is": "Urine protein screens for protein spilling into urine. Small temporary amounts can occur, but persistent protein can need follow-up.", "what_high_can_mean": ["Temporary protein after exercise, fever, or dehydration", "Kidney inflammation or damage (needs clinician evaluation if persistent)", "Urine infection can sometimes affect results"], "what_low_can_mean": ["Negative/low protein is usually normal"], "common_next_steps": ["If positive, ask if a repeat test or urine albumin-to-creatinine ratio (ACR) is needed.", "Discuss blood pressure and diabetes history with a clinician."], "questions_to_ask": ["Was this a dipstick screen or a quantitative test (ACR/PCR)?", "Should I repeat it to confirm persistence?"], "limits": ["A single result is not enough to diagnose a condition.", "Reference ranges can vary by lab, method, age, and sex."], "evidence": [{"source_title": "Internal KB (clinician review required)", "source_type": "kb_internal", "snippet_id": "urine_protein.v1"}]}}};
+  </script>
+
+  <script>
+// public/interpreter.js
+// Browser-only lab interpreter. Educational only — not medical advice.
+
+(function () {
+  const KB = window.LAB_KB;
+
+  function normalizeText(s) {
+    return String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function toNumber(x) {
+    if (x === null || x === undefined) return null;
+    if (typeof x === "number" && Number.isFinite(x)) return x;
+    if (typeof x === "string") {
+      const cleaned = x.trim().replace(",", ".");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+
+  const INDEX = new Map();
+  function indexTerm(term, key) {
+    const t = normalizeText(term);
+    if (!t) return;
+    if (!INDEX.has(t)) INDEX.set(t, key);
+  }
+
+  for (const [key, t] of Object.entries(KB.tests)) {
+    indexTerm(key, key);
+    indexTerm(t?.name, key);
+    indexTerm(t?.loinc, key);
+    if (Array.isArray(t?.aliases)) for (const a of t.aliases) indexTerm(a, key);
+  }
+
+  function resolveTestKey(input) {
+    const raw = normalizeText(input);
+    if (!raw) return null;
+    if (KB.tests[raw]) return raw;
+    if (INDEX.has(raw)) return INDEX.get(raw);
+    for (const [term, key] of INDEX.entries()) {
+      if (term.includes(raw) || raw.includes(term)) return key;
+    }
+    return null;
+  }
+
+  function classify(value, refLow, refHigh) {
+    const v = toNumber(value);
+    const lo = toNumber(refLow);
+    const hi = toNumber(refHigh);
+
+    if (v === null) return { status: "UNKNOWN", reason: "Value is not a number." };
+    if (lo === null || hi === null) return { status: "UNKNOWN", reason: "Reference range is missing or invalid." };
+    if (lo > hi) return { status: "UNKNOWN", reason: "Reference range looks reversed (low > high)." };
+
+    if (v < lo) return { status: "LOW", reason: "Below the lab reference range." };
+    if (v > hi) return { status: "HIGH", reason: "Above the lab reference range." };
+    return { status: "NORMAL", reason: "Within the lab reference range." };
+  }
+
+  function extremeNote(value, refLow, refHigh) {
+    const v = toNumber(value);
+    const lo = toNumber(refLow);
+    const hi = toNumber(refHigh);
+    if (v === null || lo === null || hi === null) return null;
+    const range = hi - lo;
+    if (range <= 0) return null;
+    if (v < lo - 2 * range || v > hi + 2 * range) {
+      return "This value is far outside the reference range. If you feel unwell or have concerning symptoms, contact a healthcare professional promptly.";
+    }
+    return null;
+  }
+
+  function safeList(arr, max = 6) {
+    return Array.isArray(arr) ? arr.filter(Boolean).slice(0, max) : [];
+  }
+
+  function buildInterpretation(testKB, status) {
+    const what = testKB?.what_it_is || "No description available yet.";
+    let meaning = [];
+    if (status === "HIGH") meaning = safeList(testKB?.what_high_can_mean);
+    else if (status === "LOW") meaning = safeList(testKB?.what_low_can_mean);
+
+    return {
+      what_it_is: what,
+      what_this_result_can_mean: meaning,
+      common_next_steps: safeList(testKB?.common_next_steps),
+      questions_to_ask: safeList(testKB?.questions_to_ask),
+      limits: safeList(testKB?.limits),
+    };
+  }
+
+  function explainLabReport(payload) {
+    if (!payload || typeof payload !== "object") throw new Error("Request body must be a JSON object.");
+    if (!Array.isArray(payload.results)) throw new Error("Missing `results` array.");
+
+    const out = {
+      generated_at: new Date().toISOString(),
+      disclaimer:
+        "Educational information only — not medical advice, diagnosis, or treatment. Lab results must be interpreted by a qualified clinician using your full health context.",
+      results: [],
+      unknown_tests: [],
+    };
+
+    for (const item of payload.results) {
+      const testInput = item?.test ?? item?.name ?? item?.loinc;
+      const key = resolveTestKey(testInput);
+
+      const input = {
+        test: testInput ?? null,
+        value: item?.value ?? null,
+        unit: item?.unit ?? null,
+        ref_low: item?.ref_low ?? null,
+        ref_high: item?.ref_high ?? null,
+      };
+
+      if (!key) {
+        out.unknown_tests.push(input.test ?? "(missing test name)");
+        out.results.push({
+          input,
+          test: null,
+          status: "UNKNOWN",
+          status_reason: "Test not found in knowledge base.",
+          interpretation: {
+            what_it_is: "This test is not yet supported in this app.",
+            what_this_result_can_mean: [],
+            common_next_steps: ["Confirm the test name and units on the lab report.", "Discuss the result with a clinician."],
+            questions_to_ask: ["What does this test measure?", "What is the correct reference range for me?"],
+            limits: ["Not enough information to interpret this test in this app yet."],
+          },
+          notes: [],
+        });
+        continue;
+      }
+
+      const testKB = KB.tests[key];
+      const { status, reason } = classify(item?.value, item?.ref_low, item?.ref_high);
+
+      const notes = [];
+      const extreme = extremeNote(item?.value, item?.ref_low, item?.ref_high);
+      if (extreme) notes.push(extreme);
+
+      out.results.push({
+        input,
+        test: { key, name: testKB?.name ?? key, loinc: testKB?.loinc ?? null },
+        status,
+        status_reason: reason,
+        interpretation: buildInterpretation(testKB, status),
+        notes,
+      });
+    }
+
+    return out;
+  }
+
+  window.explainLabReport = explainLabReport;
+})();
+
+  </script>
+
+  <script>
+// public/app.js
+const tbody = document.getElementById("tbody");
+const out = document.getElementById("out");
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function badge(status) {
+  const s = String(status || "UNKNOWN").toUpperCase();
+  return `<span class="badge badge-${s}">${s}</span>`;
+}
+
+function list(items) {
+  if (!items || items.length === 0) return "<p class='muted small'>—</p>";
+  return `<ul>${items.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ul>`;
+}
+
+function addRow(prefill = {}) {
+  const tr = document.createElement("tr");
+
+  const cells = [
+    { key: "test", placeholder: "e.g., Glucose, HbA1c, WBC, ALT", value: prefill.test ?? "" },
+    { key: "value", placeholder: "e.g., 110", value: prefill.value ?? "" },
+    { key: "unit", placeholder: "e.g., mg/dL", value: prefill.unit ?? "" },
+    { key: "ref_low", placeholder: "e.g., 70", value: prefill.ref_low ?? "" },
+    { key: "ref_high", placeholder: "e.g., 99", value: prefill.ref_high ?? "" },
+  ];
+
+  for (const c of cells) {
+    const td = document.createElement("td");
+    const inp = document.createElement("input");
+    inp.dataset.key = c.key;
+    inp.placeholder = c.placeholder;
+    inp.value = c.value;
+    td.appendChild(inp);
+    tr.appendChild(td);
+  }
+
+  const tdRemove = document.createElement("td");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Remove";
+  btn.className = "remove-btn";
+  btn.addEventListener("click", () => {
+    tr.remove();
+    if (tbody.children.length === 0) addRow();
+  });
+  tdRemove.appendChild(btn);
+  tr.appendChild(tdRemove);
+
+  tbody.appendChild(tr);
+}
+
+function readRows() {
+  const results = [];
+  for (const tr of tbody.querySelectorAll("tr")) {
+    const item = {};
+    for (const inp of tr.querySelectorAll("input")) {
+      item[inp.dataset.key] = inp.value;
+    }
+    // Only include rows that have at least a test and value
+    if ((item.test ?? "").trim() || (item.value ?? "").trim()) {
+      results.push(item);
+    }
+  }
+  return results;
+}
+
+function render(api) {
+  if (!api?.results?.length) return "<p class='muted'>No results returned.</p>";
+
+  return `
+    <p class="disclaimer">${escapeHtml(api.disclaimer || "")}</p>
+    <p class="muted small">Generated: ${escapeHtml(api.generated_at || "")}</p>
+    ${api.results.map(renderOne).join("")}
+  `;
+}
+
+function renderOne(r) {
+  const tName = r.test?.name || r.input?.test || "Unknown test";
+  const unit = r.input?.unit || "";
+
+  return `
+    <div class="result-card">
+      <div class="result-header">
+        <h3>${escapeHtml(tName)}</h3>
+        ${badge(r.status)}
+      </div>
+
+      <p class="small">
+        <strong>Your value:</strong> ${escapeHtml(r.input?.value)} ${escapeHtml(unit)}<br/>
+        <strong>Reference range:</strong> ${escapeHtml(r.input?.ref_low)} – ${escapeHtml(r.input?.ref_high)} ${escapeHtml(unit)}
+      </p>
+
+      <p class="muted small"><strong>Why:</strong> ${escapeHtml(r.status_reason || "")}</p>
+
+      <hr/>
+
+      <div class="grid">
+        <div>
+          <h4>What this test is</h4>
+          <p class="small">${escapeHtml(r.interpretation?.what_it_is || "")}</p>
+        </div>
+
+        <div>
+          <h4>What this result can mean</h4>
+          ${list(r.interpretation?.what_this_result_can_mean)}
+        </div>
+
+        <div>
+          <h4>Common next steps</h4>
+          ${list(r.interpretation?.common_next_steps)}
+        </div>
+
+        <div>
+          <h4>Questions to ask</h4>
+          ${list(r.interpretation?.questions_to_ask)}
+        </div>
+
+        <div>
+          <h4>Limits</h4>
+          ${list(r.interpretation?.limits)}
+        </div>
+      </div>
+
+      ${r.notes?.length ? `<hr/><h4>Note</h4>${list(r.notes)}` : ""}
+    </div>
+  `;
+}
+
+// Buttons
+document.getElementById("addRow").addEventListener("click", () => addRow());
+
+document.getElementById("loadExample").addEventListener("click", () => {
+  tbody.innerHTML = "";
+  const example = [
+    { test: "Glucose", value: "110", unit: "mg/dL", ref_low: "70", ref_high: "99" },
+    { test: "Creatinine", value: "1.4", unit: "mg/dL", ref_low: "0.7", ref_high: "1.3" },
+    { test: "WBC", value: "12.5", unit: "10^9/L", ref_low: "4.0", ref_high: "11.0" },
+    { test: "ALT", value: "62", unit: "U/L", ref_low: "7", ref_high: "56" },
+    { test: "Platelets", value: "160", unit: "10^9/L", ref_low: "150", ref_high: "450" },
+  ];
+  for (const row of example) addRow(row);
+});
+
+document.getElementById("clear").addEventListener("click", () => {
+  tbody.innerHTML = "";
+  addRow();
+  out.textContent = "Nothing yet.";
+});
+
+document.getElementById("interpret").addEventListener("click", () => {
+  try {
+    const results = readRows();
+    if (results.length === 0) {
+      out.textContent = "Please enter at least one test.";
+      return;
+    }
+    const api = window.explainLabReport({ results });
+    out.innerHTML = render(api);
+  } catch (e) {
+    out.textContent = `Error: ${e?.message || "Unknown error"}`;
+  }
+});
+
+// init
+addRow();
+
+  </script>
+</body>
+</html>
